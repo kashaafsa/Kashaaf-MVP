@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+@theme {
+  --color-gaming-primary: #00E5FF;
+  --color-gaming-secondary: #7000ff;
+  --color-gaming-dark: #0a0a0a;
+  --color-gaming-card: rgba(255, 255, 255, 0.1);
+  --font-sans: 'Inter', sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: #0a0a0a;
+  color: #ffffff;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #00ff99;
+}

@@ -1,0 +1,7 @@
+python-dotenv
+supabase
+requests
+opencv-python-headless
+pytesseract
+pytesseract-ocr
+pytesseract
