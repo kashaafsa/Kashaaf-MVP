@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Home, User, Settings, Moon, Sun, Monitor, LogOut, Menu, X, ChevronDown } from "lucide-react";
-import { useTheme } from "next-themes";
+import { Home, User, Settings, LogOut, Menu, X, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabase/client";
+import { useI18n } from "@/lib/i18n-context";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -15,24 +17,73 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-    DropdownMenuSub,
-    DropdownMenuSubTrigger,
-    DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function Navbar() {
     const pathname = usePathname();
-    const { setTheme } = useTheme();
+
     const [isOpen, setIsOpen] = useState(false);
     const [isGamesOpen, setIsGamesOpen] = useState(false);
+    const router = useRouter();
+    const { t } = useI18n();
+
+    // Real user data
+    const [userEmail, setUserEmail] = useState<string | null>(null);
+    const [userName, setUserName] = useState<string | null>(null);
+    const [userUsername, setUserUsername] = useState<string | null>(null);
+
+    useEffect(() => {
+        (async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session) return;
+                setUserEmail(session.user.email ?? null);
+                const { data } = await supabase
+                    .from("profiles")
+                    .select("full_name, username")
+                    .eq("id", session.user.id)
+                    .single();
+                if (data) {
+                    setUserName(data.full_name);
+                    setUserUsername(data.username);
+                }
+            } catch { /* not signed in – landing page visitor */ }
+        })();
+
+        // Listen for auth changes (login/logout)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event: string, session: any) => {
+            if (session) {
+                setUserEmail(session.user.email ?? null);
+                const { data } = await supabase
+                    .from("profiles")
+                    .select("full_name, username")
+                    .eq("id", session.user.id)
+                    .single();
+                if (data) {
+                    setUserName(data.full_name);
+                    setUserUsername(data.username);
+                }
+            } else {
+                setUserEmail(null);
+                setUserName(null);
+                setUserUsername(null);
+            }
+        });
+
+        return () => subscription.unsubscribe();
+    }, []);
+
+    async function handleLogout() {
+        await supabase.auth.signOut();
+        router.push("/");
+    }
 
     const isLanding = pathname === "/";
     const isAuth = pathname?.startsWith("/auth");
 
     if (isAuth) return null;
 
-    // Dynamic Styles based on Landing vs App
     const navbarClasses = isLanding
         ? "fixed top-0 w-full z-50 bg-black/10 backdrop-blur-md border-b border-white/10 text-white font-sans transition-all duration-300"
         : "sticky top-0 z-50 w-full border-b border-border/50 bg-background/50 backdrop-blur-xl transition-all duration-300";
@@ -42,26 +93,27 @@ export function Navbar() {
         ? "h-25 w-auto object-contain"
         : "object-contain transition-transform group-hover:scale-110";
 
+    const displayName = userName || userUsername || "User";
+    const displayEmail = userEmail || "";
+    const initials = displayName
+        .split(" ")
+        .map((w) => w[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2);
+
     return (
         <header className={navbarClasses}>
             <div className={`mx-auto flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8 w-full`}>
 
                 {/* Left Side: Logo & Navigation */}
                 <div className="flex items-center gap-12">
-                    {/* Logo */}
                     <Link href="/" className={`group flex items-center gap-2 mr-10`}>
                         <div className={`relative ${isLanding ? "h-auto w-auto" : "h-25 w-25"}`}>
-                            {/* Using standard img tag for landing logo to match original design exact sizing, Next Image for app */}
                             {isLanding ? (
                                 <img src={logoSrc} alt="Kashaaf" className={logoClasses} />
                             ) : (
-                                <Image
-                                    src={logoSrc}
-                                    alt="Kashaaf Logo"
-                                    fill
-                                    className={logoClasses}
-                                    priority
-                                />
+                                <Image src={logoSrc} alt="Kashaaf Logo" fill className={logoClasses} priority />
                             )}
                         </div>
                     </Link>
@@ -69,21 +121,19 @@ export function Navbar() {
                     {/* Desktop Navigation */}
                     <nav className="hidden md:flex items-center gap-8">
                         <NavLink href="/feed" active={pathname === "/feed"} isLanding={isLanding}>
-                            Feed
+                            {t("nav.feed")}
                         </NavLink>
 
                         {isLanding ? (
-                            // Landing Specific Links
                             <>
-                                <NavLink href="/AI" active={false} isLanding={isLanding}>AI Lab</NavLink>
-                                {/* Games Dropdown for Landing */}
+                                <NavLink href="/AI" active={false} isLanding={isLanding}>{t("nav.aiLab")}</NavLink>
                                 <div
                                     className="relative inline-block text-left"
                                     onMouseEnter={() => setIsGamesOpen(true)}
                                     onMouseLeave={() => setIsGamesOpen(false)}
                                 >
                                     <button className="flex items-center hover:text-gaming-primary transition-colors px-3 py-2 rounded-md font-medium outline-none cursor-pointer">
-                                        Games <ChevronDown className="ml-1 h-4 w-4" />
+                                        {t("nav.games")} <ChevronDown className="ms-1 h-4 w-4" />
                                     </button>
 
                                     <AnimatePresence>
@@ -92,37 +142,34 @@ export function Navbar() {
                                                 initial={{ opacity: 0, y: 10 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                                 exit={{ opacity: 0, y: 10 }}
-                                                className="absolute left-0 mt-0 w-56 rounded-md shadow-lg bg-gaming-dark/95 border border-white/10 ring-1 ring-black ring-opacity-5 backdrop-blur-xl"
+                                                className="absolute start-0 mt-0 w-56 rounded-md shadow-lg bg-gaming-dark/95 border border-white/10 ring-1 ring-black ring-opacity-5 backdrop-blur-xl"
                                             >
                                                 <div className="py-1" role="menu">
-                                                    <Link href="#" className="block px-4 py-2 text-sm hover:bg-white/5 hover:text-gaming-primary" role="menuitem">Overwatch 2</Link>
-                                                    <Link href="#" className="block px-4 py-2 text-sm hover:bg-white/5 hover:text-gaming-primary" role="menuitem">EA FC 26</Link>
-                                                    <Link href="#" className="block px-4 py-2 text-sm hover:bg-white/5 hover:text-gaming-primary" role="menuitem">Call of Duty</Link>
-                                                    <Link href="#" className="block px-4 py-2 text-sm hover:bg-white/5 hover:text-gaming-primary" role="menuitem">Valorant</Link>
+                                                    <Link href="#" className="block px-4 py-2 text-sm hover:bg-white/5 hover:text-gaming-primary" role="menuitem">{t("nav.overwatch")}</Link>
+                                                    <Link href="#" className="block px-4 py-2 text-sm hover:bg-white/5 hover:text-gaming-primary" role="menuitem">{t("nav.eafc")}</Link>
+                                                    <Link href="#" className="block px-4 py-2 text-sm hover:bg-white/5 hover:text-gaming-primary" role="menuitem">{t("nav.cod")}</Link>
+                                                    <Link href="#" className="block px-4 py-2 text-sm hover:bg-white/5 hover:text-gaming-primary" role="menuitem">{t("nav.valorant")}</Link>
                                                 </div>
-
                                             </motion.div>
-
                                         )}
                                     </AnimatePresence>
                                 </div>
-                                <NavLink href="/tournament" active={false} isLanding={isLanding}>Tournament</NavLink>
-                                <NavLink href="/about" active={false} isLanding={isLanding}>About Us</NavLink>
+                                <NavLink href="/tournament" active={false} isLanding={isLanding}>{t("nav.tournament")}</NavLink>
+                                <NavLink href="/about" active={false} isLanding={isLanding}>{t("nav.aboutUs")}</NavLink>
                             </>
                         ) : (
-                            // App Specific Links
                             <>
                                 <NavLink href="/AI" active={pathname === "/AI"} isLanding={isLanding}>
-                                    AI LAB
+                                    {t("nav.aiLab")}
                                 </NavLink>
                                 <NavLink href="/games" active={pathname === "/games"} isLanding={isLanding}>
-                                    Games
+                                    {t("nav.games")}
                                 </NavLink>
                                 <NavLink href="/tournament" active={pathname === "/tournament"} isLanding={isLanding}>
-                                    Tournament
+                                    {t("nav.tournament")}
                                 </NavLink>
                                 <NavLink href="/about" active={pathname === "/about"} isLanding={isLanding}>
-                                    About Us
+                                    {t("nav.aboutUs")}
                                 </NavLink>
                             </>
                         )}
@@ -133,21 +180,18 @@ export function Navbar() {
                 <div className="flex items-center gap-4">
 
                     {isLanding ? (
-                        // Landing Actions (Log in / Sign up)
                         <div className="hidden md:flex items-center space-x-4">
-                            <Link href="/auth" className="text-white hover:text-gaming-primary transition-colors font-medium">Log in</Link>
+                            <Link href="/auth" className="text-white hover:text-gaming-primary transition-colors font-medium">{t("nav.login")}</Link>
                             <Link href="/auth?mode=signup" className="bg-gaming-primary text-black hover:bg-gaming-primary/80 px-4 py-2 rounded-full font-bold transition-transform hover:scale-105 inline-block">
-                                Join
+                                {t("nav.join")}
                             </Link>
                         </div>
                     ) : (
-                        // App Actions (User Menu)
                         <>
-                            {/* Home Button */}
                             <Link href="/">
                                 <Button variant="ghost" size="sm" className="hidden sm:flex items-center gap-2">
                                     <Home className="h-4 w-4" />
-                                    Home
+                                    {t("nav.home")}
                                 </Button>
                             </Link>
 
@@ -155,54 +199,32 @@ export function Navbar() {
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" className="relative h-10 w-10 rounded-full ring-2 ring-primary/20 hover:ring-primary/50 transition-all">
                                         <Avatar className="h-10 w-10">
-                                            <AvatarImage src="/avatar-placeholder.png" alt="User" />
-                                            <AvatarFallback className="bg-primary/20 text-primary font-bold">JD</AvatarFallback>
+                                            <AvatarImage src="/avatar-placeholder.png" alt={displayName} />
+                                            <AvatarFallback className="bg-primary/20 text-primary font-bold">{initials}</AvatarFallback>
                                         </Avatar>
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent className="w-56" align="end" forceMount>
                                     <DropdownMenuLabel className="font-normal">
                                         <div className="flex flex-col space-y-1">
-                                            <p className="text-sm font-medium leading-none">John Doe</p>
-                                            <p className="text-xs leading-none text-muted-foreground">kashaaf@example.com</p>
+                                            <p className="text-sm font-medium leading-none">{displayName}</p>
+                                            <p className="text-xs leading-none text-muted-foreground">{displayEmail}</p>
                                         </div>
                                     </DropdownMenuLabel>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem>
-                                        <User className="mr-2 h-4 w-4" />
-                                        <span>Profile</span>
+                                    <DropdownMenuItem onClick={() => router.push("/profile")}>
+                                        <User className="me-2 h-4 w-4" />
+                                        <span>{t("nav.profile")}</span>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem>
-                                        <Settings className="mr-2 h-4 w-4" />
-                                        <span>Settings</span>
+                                        <Settings className="me-2 h-4 w-4" />
+                                        <span>{t("nav.settings")}</span>
                                     </DropdownMenuItem>
-
-                                    <DropdownMenuSub>
-                                        <DropdownMenuSubTrigger>
-                                            <Sun className="mr-2 h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                                            <Moon className="absolute mr-2 h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                                            <span className="ml-2">Theme</span>
-                                        </DropdownMenuSubTrigger>
-                                        <DropdownMenuSubContent>
-                                            <DropdownMenuItem onClick={() => setTheme("light")}>
-                                                <Sun className="mr-2 h-4 w-4" />
-                                                Light
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => setTheme("dark")}>
-                                                <Moon className="mr-2 h-4 w-4" />
-                                                Dark
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => setTheme("system")}>
-                                                <Monitor className="mr-2 h-4 w-4" />
-                                                System
-                                            </DropdownMenuItem>
-                                        </DropdownMenuSubContent>
-                                    </DropdownMenuSub>
 
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem className="text-destructive focus:text-destructive">
-                                        <LogOut className="mr-2 h-4 w-4" />
-                                        <span>Log out</span>
+                                    <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={handleLogout}>
+                                        <LogOut className="me-2 h-4 w-4" />
+                                        <span>{t("nav.logout")}</span>
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -210,7 +232,7 @@ export function Navbar() {
                     )}
 
                     {/* Mobile Menu Toggle */}
-                    <div className="md:hidden flex items-center ml-4">
+                    <div className="md:hidden flex items-center ms-4">
                         <button
                             onClick={() => setIsOpen(!isOpen)}
                             className={`inline-flex items-center justify-center p-2 rounded-md focus:outline-none ${isLanding ? "text-white hover:text-gaming-primary" : "text-foreground hover:text-primary"}`}
@@ -221,7 +243,7 @@ export function Navbar() {
                 </div>
             </div>
 
-            {/* Mobile Menu (Unified) */}
+            {/* Mobile Menu */}
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
@@ -231,25 +253,25 @@ export function Navbar() {
                         className={`md:hidden border-b ${isLanding ? "bg-gaming-dark/95 border-white/10" : "bg-background/95 border-border/10"}`}
                     >
                         <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-                            <Link href="/feed" className={`block px-3 py-2 rounded-md text-base font-medium ${isLanding ? "text-white hover:text-gaming-primary hover:bg-white/5" : "text-foreground hover:text-primary hover:bg-primary/5"}`}>Feed</Link>
+                            <Link href="/feed" className={`block px-3 py-2 rounded-md text-base font-medium ${isLanding ? "text-white hover:text-gaming-primary hover:bg-white/5" : "text-foreground hover:text-primary hover:bg-primary/5"}`}>{t("nav.feed")}</Link>
 
                             {isLanding ? (
                                 <>
-                                    <Link href="/AI" className="block px-3 py-2 rounded-md text-base font-medium text-white hover:text-gaming-primary hover:bg-white/5">AI Lab</Link>
-                                    <Link href="#" className="block px-3 py-2 rounded-md text-base font-medium text-white hover:text-gaming-primary hover:bg-white/5">Games</Link>
-                                    <Link href="/tournament" className="block px-3 py-2 rounded-md text-base font-medium text-white hover:text-gaming-primary hover:bg-white/5">Tournament</Link>
-                                    <Link href="/about" className="block px-3 py-2 rounded-md text-base font-medium text-white hover:text-gaming-primary hover:bg-white/5">About Us</Link>
+                                    <Link href="/AI" className="block px-3 py-2 rounded-md text-base font-medium text-white hover:text-gaming-primary hover:bg-white/5">{t("nav.aiLab")}</Link>
+                                    <Link href="#" className="block px-3 py-2 rounded-md text-base font-medium text-white hover:text-gaming-primary hover:bg-white/5">{t("nav.games")}</Link>
+                                    <Link href="/tournament" className="block px-3 py-2 rounded-md text-base font-medium text-white hover:text-gaming-primary hover:bg-white/5">{t("nav.tournament")}</Link>
+                                    <Link href="/about" className="block px-3 py-2 rounded-md text-base font-medium text-white hover:text-gaming-primary hover:bg-white/5">{t("nav.aboutUs")}</Link>
                                     <div className="border-t border-white/10 mt-4 pt-4 flex flex-col space-y-3 px-3">
-                                        <Link href="/auth" className="w-full text-left text-white hover:text-gaming-primary font-medium block">Log in</Link>
-                                        <Link href="/auth?mode=signup" className="w-full bg-gaming-primary text-black px-4 py-2 rounded-full font-bold text-center block">Join</Link>
+                                        <Link href="/auth" className="w-full text-start text-white hover:text-gaming-primary font-medium block">{t("nav.login")}</Link>
+                                        <Link href="/auth?mode=signup" className="w-full bg-gaming-primary text-black px-4 py-2 rounded-full font-bold text-center block">{t("nav.join")}</Link>
                                     </div>
                                 </>
                             ) : (
                                 <>
-                                    <Link href="/AI" className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:text-primary hover:bg-primary/5">AI LAB</Link>
-                                    <Link href="/games" className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:text-primary hover:bg-primary/5">Games</Link>
-                                    <Link href="/tournament" className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:text-primary hover:bg-primary/5">Tournament</Link>
-                                    <Link href="/about" className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:text-primary hover:bg-primary/5">About Us</Link>
+                                    <Link href="/AI" className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:text-primary hover:bg-primary/5">{t("nav.aiLab")}</Link>
+                                    <Link href="/games" className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:text-primary hover:bg-primary/5">{t("nav.games")}</Link>
+                                    <Link href="/tournament" className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:text-primary hover:bg-primary/5">{t("nav.tournament")}</Link>
+                                    <Link href="/about" className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:text-primary hover:bg-primary/5">{t("nav.aboutUs")}</Link>
                                 </>
                             )}
                         </div>
