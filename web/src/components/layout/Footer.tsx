@@ -51,7 +51,7 @@ export function Footer() {
                         <h3 className="text-white font-bold mb-4 uppercase tracking-wider">{t("footer.company")}</h3>
                         <ul className="space-y-2">
                             <li><Link href="/about" className="text-gray-400 hover:text-gaming-primary transition-colors text-sm">{t("nav.aboutUs")}</Link></li>
-                            <li><Link href="/contact" className="text-gray-400 hover:text-gaming-primary transition-colors text-sm">{t("footer.contactUs")}</Link></li>
+                            <li><a href="mailto:kashaaf.sa@gmail.com" className="text-gray-400 hover:text-gaming-primary transition-colors text-sm">{t("footer.contactUs")}</a></li>
                             <li><Link href="/careers" className="text-gray-400 hover:text-gaming-primary transition-colors text-sm">{t("footer.careers")}</Link></li>
                             <li><Link href="/privacy" className="text-gray-400 hover:text-gaming-primary transition-colors text-sm">{t("footer.privacyPolicy")}</Link></li>
                         </ul>
