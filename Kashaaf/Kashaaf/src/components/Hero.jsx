@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const sentences = [
     "The ultimate social platform for gamers to connect, showcase, and compete",

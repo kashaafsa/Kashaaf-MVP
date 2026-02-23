@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play } from 'lucide-react';
+import { Play, Rocket } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -111,8 +111,8 @@ const LandingHero = () => {
                     <Link href="/auth?mode=signup" className="px-8 py-4 bg-gaming-primary text-black font-bold rounded-full text-lg hover:bg-gaming-primary/80 transition-all hover:scale-105 flex items-center justify-center gap-2">
                         Join Now <Play size={20} fill="currentColor" />
                     </Link>
-                    <Link href="/feed" className="px-8 py-4 bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold rounded-full text-lg hover:bg-white/20 transition-all hover:scale-105">
-                        Explore Feed
+                    <Link href="/pilot" className="px-8 py-4 bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold rounded-full text-lg hover:bg-white/20 transition-all hover:scale-105 flex items-center justify-center gap-2">
+                        Pilot <Rocket size={20} />
                     </Link>
                 </motion.div>
             </div>
