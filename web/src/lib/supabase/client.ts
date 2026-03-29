@@ -30,6 +30,12 @@ function createSupabaseClient() {
         getUser: async () => {
           throw new Error(errorMsg);
         },
+        updateUser: async () => {
+          throw new Error(errorMsg);
+        },
+        onAuthStateChange: () => ({
+          data: { subscription: { unsubscribe: () => {} } },
+        }),
       },
       from: () => {
         throw new Error(errorMsg);

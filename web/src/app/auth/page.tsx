@@ -65,8 +65,10 @@ function AuthPageContent() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) router.replace(redirectTo);
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data.session) router.replace(redirectTo);
+      } catch { /* env not configured or not signed in */ }
     })();
   }, [router]);
 
